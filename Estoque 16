@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reposição de Estoque - SELAVES/BD-15</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f6fb;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding-top: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1, h2 {
+            color: #004d99;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f6fb;
+            color: #004d99;
+        }
+        .button {
+            padding: 10px 20px;
+            background-color: #004d99;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #003366;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reposição de Estoque - SELAVES/BD-15</h1>
+        <h2 id="estoque-info">Estoque: </h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Código</th>
+                    <th>Quantidade Necessária</th>
+                    <th>Quantidade Encontrada</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="itens-tabela"></tbody>
+        </table>
+        <button class="button" onclick="salvarEstoque()">Salvar Estoque no Firebase</button>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTUQaMdGf4kpthkHpPXCsKQ-FZ4XLqW5g",
+            authDomain: "estoques-1da50.firebaseapp.com",
+            databaseURL: "https://estoques-1da50-default-rtdb.firebaseio.com",
+            projectId: "estoques-1da50",
+            storageBucket: "estoques-1da50.appspot.com",
+            messagingSenderId: "91188354345",
+            appId: "1:91188354345:web:823ba327fda808c5616b38",
+            measurementId: "G-KFS8GL62M0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const estoqueNome = urlParams.get('nome');
+        const estoqueNumero = urlParams.get('numero');
+        const estoqueModelo = urlParams.get('modelo');
+        const estoqueResponsavel = urlParams.get('responsavel');
+        const estoqueLink = urlParams.get('link');
+
+        const estoqueInfo = document.getElementById('estoque-info');
+        estoqueInfo.textContent = `Estoque: ${estoqueNome} (Número: ${estoqueNumero}, Modelo: ${estoqueModelo})`;
+
+        let itens = [];
+
+        // Lista completa de itens SELAVES/BD-15
+        const itensPadraoSELAVES = [
+  { "nome": "ABRAÇADEIRA NYLON 100MMX2,5MM (PEQUENA)", "codigo": "9318", "necessario": 200, "encontrado": 0 },
+  { "nome": "ABRAÇADEIRA NYLON 4,6MMX200MM (MÉDIA)", "codigo": "3296", "necessario": 0, "encontrado": 0 },
+  { "nome": "ARRUELA LISA 1/2 GVZ (UTILIZA NO ENGATE RAPIDO MACHO E A LUVA 1/4)", "codigo": "9763", "necessario": 10, "encontrado": 0 },
+  { "nome": "ARRUELA LISA 1/4 INOX (JUNTO COM PF NAS LATERAIS DA SELAVES)", "codigo": "9320", "necessario": 100, "encontrado": 0 },
+  { "nome": "ARRUELA LISA M4 INOX (JUNTO C/ PF NAS CX´S OPACA E NO LUBRIFIL)", "codigo": "9472", "necessario": 40, "encontrado": 0 },
+  { "nome": "BARRA DE PINOS 1X40 VIAS 11,2MM 180º (PINOS RETOS)", "codigo": "9619", "necessario": 280, "encontrado": 0 },
+  { "nome": "BARRA DE PINOS 1X40 VIAS 14,5MM 90º (PEQUENO)", "codigo": "9617", "necessario": 280, "encontrado": 0 },
+  { "nome": "BARRA DE PINOS 1X40 VIAS 17MM 90º (GRANDE)", "codigo": "9970", "necessario": 280, "encontrado": 0 },
+  { "nome": "BARRA ROSCADA M4 INOX", "codigo": "9607", "necessario": 4, "encontrado": 0 },
+  { "nome": "BATERIA 12VCC 1,3A", "codigo": "3592", "necessario": 6, "encontrado": 0 },
+  { "nome": "BATERIA SVCC PS/SEL WIFI", "codigo": "10822", "necessario": 3, "encontrado": 0 },
+  { "nome": "BLOCO DE CONTATO NF (UTILIZADO NO BOTÃO LD ENTRADA DE ALIMENTAÇÃO)", "codigo": "9425", "necessario": 10, "encontrado": 0 },
+  { "nome": "BOTÃO DE EMERGÊNCIA", "codigo": "9415", "necessario": 7, "encontrado": 0 },
+  { "nome": "BUCHA METALICA MACHO 1/4 (VALVULA EMERGÊNCIA NA PARTE FECHADA)", "codigo": "9964", "necessario": 8, "encontrado": 0 },
+  { "nome": "CABO DE ALIMENTAÇÃO 2,5MM TRIPOLAR", "codigo": "4002", "necessario": 5, "encontrado": 0 },
+  { "nome": "CABO AWG 4X", "codigo": "9478", "necessario": 20, "encontrado": 0 },
+  { "nome": "CABO FLAT COLORIDO 20 VIAS", "codigo": "10051", "necessario": 40, "encontrado": 0 },
+  { "nome": "CABO VERMELHO 1X0,5MM", "codigo": "9875", "necessario": 10, "encontrado": 0 },
+  { "nome": "CABO PRETO 1X0,5MM", "codigo": "9873", "necessario": 10, "encontrado": 0 },
+  { "nome": "CABO PP 3X0,5MM", "codigo": "10551", "necessario": 15, "encontrado": 0 },
+  { "nome": "CAIXA OPACA 190X140X70 (CAIXA CEMAR SELAVES ANTIGA)", "codigo": "9467", "necessario": 2, "encontrado": 0 },
+  { "nome": "CAIXA ABS CINZA PBL 202 (CAIXA PATOLA SELAVES NOVA)", "codigo": "10152", "necessario": 2, "encontrado": 0 },
+  { "nome": "CAIXA BX01 - 1 FURO 76X70X60", "codigo": "9400", "necessario": 4, "encontrado": 0 },
+  { "nome": "CAIXA BX02 - 2 FURO", "codigo": "9401", "necessario": 4, "encontrado": 0 },
+  { "nome": "CAPACITOR POLIESTER 100K 63V", "codigo": "9962", "necessario": 10, "encontrado": 0 },
+  { "nome": "CAPACITOR 47NF 400V", "codigo": "9271", "necessario": 10, "encontrado": 0 },
+  { "nome": "CARREGADOR 12VCC 0,8A", "codigo": "1106", "necessario": 7, "encontrado": 0 },
+  { "nome": "FONTE DE PAREDE 5 VCC 1A PS/SEL WIFI", "codigo": "12010", "necessario": 2, "encontrado": 0 },
+  { "nome": "CARTÃO SD", "codigo": "9844", "necessario": 10, "encontrado": 0 },
+  { "nome": "CÉLULA DE CARGA BSPH10 100KG", "codigo": "8750", "necessario": 1, "encontrado": 0 },
+  { "nome": "CÉLULA DE CARGA Z 50KG", "codigo": "9330", "necessario": 2, "encontrado": 0 },
+  { "nome": "CHAPA DE PROTEÇÃO DO CARTÃO", "codigo": "6743", "necessario": 5, "encontrado": 0 },
+  { "nome": "CHAVE ALAVANCA LD", "codigo": "9397", "necessario": 10, "encontrado": 0 },
+  { "nome": "CHAVE SELETORA XB2 2 POSIÇÕES (MANOPLA LD, ENTRADA DE ALIMENTAÇÃO)", "codigo": "9402", "necessario": 5, "encontrado": 0 },
+  { "nome": "CONECTOR MIKE FEMEA 4 PINOS", "codigo": "9636", "necessario": 5, "encontrado": 0 },
+  { "nome": "CONECTOR MIKE MACHO 4 PINOS", "codigo": "9281", "necessario": 5, "encontrado": 0 },
+  { "nome": "CONEXAO RETA 1/4XM4 (CONEXAO SAIDA VALVULA SELAVES 1/4 X 6)", "codigo": "8837", "necessario": 10, "encontrado": 0 },
+  { "nome": "CONEXAO RETA 1/4XM6 (CONEXAO SAIDA VALVULA SELAVES 1/4 X 8)", "codigo": "8826", "necessario": 10, "encontrado": 0 },
+  { "nome": "CONEXAO UNIÃO RETA 8MM", "codigo": "8836", "necessario": 8, "encontrado": 0 },
+  { "nome": "CONJUNTO LUBRIFIL MINI 1/4", "codigo": "8812", "necessario": 4, "encontrado": 0 },
+  { "nome": "CONVERSOR AC DC 12VCC (FONTE HI-LINK)", "codigo": "10580", "necessario": 10, "encontrado": 0 },
+  { "nome": "CONECTOR MICRO USB PS/SEL WIFI", "codigo": "10828", "necessario": 2, "encontrado": 0 },
+  { "nome": "CORDA NATURAL BRANCA 4MM", "codigo": "9633", "necessario": 6, "encontrado": 0 },
+  { "nome": "DIODO 1N4007", "codigo": "9690", "necessario": 10, "encontrado": 0 },
+  { "nome": "ENGATE RAPIDO 1/4 MACHO", "codigo": "9845", "necessario": 5, "encontrado": 0 },
+  { "nome": "ENGATE RAPIDO 1/4 FEMÊA", "codigo": "9842", "necessario": 5, "encontrado": 0 },
+  { "nome": "ESPACADOR NYLON GRANDE 7X3X10", "codigo": "9260", "necessario": 50, "encontrado": 0 },
+  { "nome": "ESPACADOR NYLON PEQUENO 7X3X5", "codigo": "9263", "necessario": 50, "encontrado": 0 },
+  { "nome": "ESPACADOR C/ ROSCA", "codigo": "9373", "necessario": 50, "encontrado": 0 },
+  { "nome": "ESPACADOR TUBULAR (ESPACADOR DA PONT. ROTULAR)", "codigo": "6761", "necessario": 20, "encontrado": 0 },
+  { "nome": "FUSIVEL 1A PEQUENO", "codigo": "9334", "necessario": 5, "encontrado": 0 },
+  { "nome": "ISOLADOR CHAPEU", "codigo": "9258", "necessario": 100, "encontrado": 0 },
+  { "nome": "KIT BOTÃO REGISTRA", "codigo": "9694", "necessario": 10, "encontrado": 0 },
+  { "nome": "LED VERMELHO DIFUSO", "codigo": "9554", "necessario": 10, "encontrado": 0 },
+  { "nome": "LUVA 1/4 METALICA SEXTAVADA (USADA NA ENTRADA DE AR, JUNTO COM ARROELA 1/2)", "codigo": "9857", "necessario": 5, "encontrado": 0 },
+  { "nome": "MANGUEIRA PU6", "codigo": "9856", "necessario": 15, "encontrado": 0 },
+  { "nome": "MANGUEIRA PUB", "codigo": "9961", "necessario": 5, "encontrado": 0 },
+  { "nome": "MÓDULO AD (MONTADO)", "codigo": "4719", "necessario": 5, "encontrado": 0 },
+  { "nome": "MÓDULO DE LEITOR SD", "codigo": "9547", "necessario": 8, "encontrado": 0 },
+  { "nome": "MÓDULO RELÉ 4 CANAIS 12VCC (MONTADO)", "codigo": "9481", "necessario": 5, "encontrado": 0 },
+  { "nome": "MÓDULO DISPLAY LCD 2 LINHAS (MONTADO)", "codigo": "9387", "necessario": 4, "encontrado": 0 },
+  { "nome": "ÓLEO DE COMPRESSOR", "codigo": "9948", "necessario": 1, "encontrado": 0 },
+  { "nome": "ÓLEO PNEUMATICO", "codigo": "3154", "necessario": 2, "encontrado": 0 },
+  { "nome": "PARAFUSO OLIAL 6MM", "codigo": "9847", "necessario": 3, "encontrado": 0 },
+  { "nome": "PARAFUSO PHILIPS 2,5X20MM INOX (CABEÇA DE PANELA)", "codigo": "9338", "necessario": 30, "encontrado": 0 },
+  { "nome": "PARAFUSO PHILIPS CONICO 2,5X20MM INOX", "codigo": "9339", "necessario": 30, "encontrado": 0 },
+  { "nome": "PF PHILIPS 3,5X9,5 (PARA FIXAR O REGULADOR 7812)", "codigo": "10763", "necessario": 12, "encontrado": 0 },
+  { "nome": "PARAFUSO PHILIPS M3X25MM INOX (FIXAR BARRA SINDAU 10MM NA CX DE PASSAGEM)", "codigo": "10579", "necessario": 16, "encontrado": 0 },
+  { "nome": "PARAFUSO PHILIPS M4X12MM INOX (DOBRADIÇAS E CAIXAS BX)", "codigo": "9342", "necessario": 30, "encontrado": 0 },
+  { "nome": "PARAFUSO SEXTAVADO M10X60 INOX (PARAFUSO SUPERIOR DO PISTÃO)", "codigo": "9767", "necessario": 8, "encontrado": 0 },
+  { "nome": "PARAFUSO SEXTAVADO M6X16MM INOX", "codigo": "9768", "necessario": 10, "encontrado": 0 },
+  { "nome": "PARAFUSO SEXTAVADO M8X55MM INOX (PARAFUSO INFERIOR DO PISTÃO)", "codigo": "2767", "necessario": 8, "encontrado": 0 },
+  { "nome": "PARAFUSO ALLEN ABAULADO M4X12MM (PLATAFORMA DE INOX)", "codigo": "9483", "necessario": 20, "encontrado": 0 },
+  { "nome": "PARAFUSO ALLEN CLINIDRICO M4X20MM (FIXAR CAIXAS OPACAS E O LUBRIFIL)", "codigo": "9769", "necessario": 20, "encontrado": 0 },
+  { "nome": "PARAFUSO ALLEN CLINIDRICO M6X10MM (FIXAR LATERAIS INF. DAS SELETORAS)", "codigo": "9350", "necessario": 100, "encontrado": 0 },
+  { "nome": "PARAFUSO ALLEN CONICO M4X35MM (FIXAR OS BORNES 16MM DAS FONTES)", "codigo": "10549", "necessario": 20, "encontrado": 0 },
+  { "nome": "PARAFUSO ALLEN CONICO M6X16MM (FIXAR PLATAFORMA SUPERIOR CÉLULA)", "codigo": "9734", "necessario": 10, "encontrado": 0 },
+  { "nome": "PARAFUSO NYLON FENDA", "codigo": "9266", "necessario": 50, "encontrado": 0 },
+  { "nome": "PISTÃO 25X250MM", "codigo": "8816", "necessario": 10, "encontrado": 0 },
+  { "nome": "PLC CONTROLADOR MEGA (MONTADO E COM SOFTWARE)", "codigo": "9389", "necessario": 4, "encontrado": 0 },
+  { "nome": "PLC CONTROLADOR UNO (COM SOFTWARE)", "codigo": "9458", "necessario": 4, "encontrado": 0 },
+  { "nome": "CONTROLADOR ESP-32 PS/SEL WIFI (MONTADO COM SOFTWARE)", "codigo": "10790", "necessario": 2, "encontrado": 0 },
+  { "nome": "PLC SEL-BOX 2.0 (CAIXA DE PASSAGEM SELAVES)", "codigo": "9882", "necessario": 2, "encontrado": 0 },
+  { "nome": "PLATAFORMA INFERIOR CÉLULA (A QUE TEM AS ORELHAS P/ FIXAR PISTÕES)", "codigo": "9550", "necessario": 3, "encontrado": 0 },
+  { "nome": "PLATAFORMA SUPERIOR CÉLULA", "codigo": "3437", "necessario": 2, "encontrado": 0 },
+  { "nome": "PONTEIRA ANGULAR (TEM QUE COLOCAR PINO ELASTICO)", "codigo": "8814", "necessario": 15, "encontrado": 0 },
+  { "nome": "PONTEIRA ROTULAR", "codigo": "8809", "necessario": 10, "encontrado": 0 },
+  { "nome": "PORCA M6 INOX", "codigo": "9781", "necessario": 10, "encontrado": 0 },
+  { "nome": "PORLOCK M10 INOX", "codigo": "9359", "necessario": 8, "encontrado": 0 },
+  { "nome": "PORLOCK M3", "codigo": "9360", "necessario": 16, "encontrado": 0 },
+  { "nome": "PORLOCK M4", "codigo": "9361", "necessario": 30, "encontrado": 0 },
+  { "nome": "PORLOCK M6", "codigo": "9362", "necessario": 10, "encontrado": 0 },
+  { "nome": "PORLOCK M8", "codigo": "3256", "necessario": 8, "encontrado": 0 },
+  { "nome": "PORCA 2,5 INOX", "codigo": "9363", "necessario": 50, "encontrado": 0 },
+  { "nome": "PORCA NYLON", "codigo": "9264", "necessario": 50, "encontrado": 0 },
+  { "nome": "PORTA FUSIVEL", "codigo": "9274", "necessario": 5, "encontrado": 0 },
+  { "nome": "PG 11", "codigo": "9549", "necessario": 5, "encontrado": 0 },
+  { "nome": "PG7", "codigo": "9364", "necessario": 30, "encontrado": 0 },
+  { "nome": "REGULADOR 7812", "codigo": "9112", "necessario": 6, "encontrado": 0 },
+  { "nome": "REGULADOR DE FLUXO 6X1/8", "codigo": "8829", "necessario": 12, "encontrado": 0 },
+  { "nome": "RESISTOR 10K2 1% 1/4W", "codigo": "9934", "necessario": 20, "encontrado": 0 },
+  { "nome": "SILENCIADOR BRONZE 1/8", "codigo": "8833", "necessario": 10, "encontrado": 0 },
+  { "nome": "SINDAL 10 MM", "codigo": "9273", "necessario": 24, "encontrado": 0 },
+  { "nome": "SINDAL 16 MM", "codigo": "10050", "necessario": 24, "encontrado": 0 },
+  { "nome": "SUPORTE DO LED 5MM", "codigo": "9557", "necessario": 10, "encontrado": 0 },
+  { "nome": "TECLADO BT", "codigo": "9978", "necessario": 2, "encontrado": 0 },
+  { "nome": "TECLADO BD15-SD/PS", "codigo": "9836", "necessario": 2, "encontrado": 0 },
+  { "nome": "TECLADO BD15-SD/SEL", "codigo": "9859", "necessario": 2, "encontrado": 0 },
+  { "nome": "TECLADO BD15-SEL (SELAVES)", "codigo": "9398", "necessario": 6, "encontrado": 0 },
+  { "nome": "TECLADO PS/SEL WiFi", "codigo": "8895", "necessario": 2, "encontrado": 0 },
+  { "nome": "TERMINAL FEMEA TOTAL (TERMINAL FAT DA BATERIA)", "codigo": "9393", "necessario": 50, "encontrado": 0 },
+  { "nome": "TERMINAL OLHAL AZUL", "codigo": "9368", "necessario": 100, "encontrado": 0 },
+  { "nome": "TERMINAL GARFO AZUL", "codigo": "9911", "necessario": 100, "encontrado": 0 },
+  { "nome": "TERMINAL TUBULAR 0,75MM BRANCO", "codigo": "9391", "necessario": 100, "encontrado": 0 },
+  { "nome": "TERMINAL TUBULAR 1MM VERMELHO", "codigo": "9431", "necessario": 100, "encontrado": 0 },
+  { "nome": "TERMINAL TUBULAR 1,5 MM PRETO", "codigo": "9432", "necessario": 100, "encontrado": 0 },
+  { "nome": "TERMINAL TUBULAR 1MM DUPLO VERMELHO", "codigo": "9870", "necessario": 100, "encontrado": 0 },
+  { "nome": "T PUB", "codigo": "9983", "necessario": 8, "encontrado": 0 },
+  { "nome": "ABRAÇADEIRA T PUB", "codigo": "9984", "necessario": 24, "encontrado": 0 },
+  { "nome": "T MULTIPLO PU6", "codigo": "9509", "necessario": 5, "encontrado": 0 },
+  { "nome": "VALVULA ESFERA 1/4 (VAI JUNTO COM ENGATE RAPIDO DE AR)", "codigo": "8820", "necessario": 5, "encontrado": 0 },
+  { "nome": "VALVULA SOLENOIDE 5/2 - 12VCC", "codigo": "8818", "necessario": 10, "encontrado": 0 },
+  { "nome": "ACRILICO DA BOBINA DA VALVULA", "codigo": "7212", "necessario": 10, "encontrado": 0 },
+  { "nome": "PORCA PROT. BOTÃO REGISTRA", "codigo": "9747", "necessario": 5, "encontrado": 0 }
+];
+
+        function renderizarTabela() {
+            const tabela = document.getElementById("itens-tabela");
+            tabela.innerHTML = "";
+            itens.forEach((item, index) => {
+                const status = item.encontrado < item.necessario 
+                    ? "Abaixo" 
+                    : item.encontrado > item.necessario 
+                        ? "Acima" 
+                        : "OK";
+
+                tabela.innerHTML += `
+                    <tr>
+                        <td>${item.nome}</td>
+                        <td>${item.codigo}</td>
+                        <td>${item.necessario}</td>
+                        <td><input type="number" value="${item.encontrado}" 
+                                  onchange="atualizarQuantidade(${index}, this.value)"></td>
+                        <td>${status}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function atualizarQuantidade(index, valor) {
+            itens[index].encontrado = parseInt(valor) || 0;
+            renderizarTabela();
+        }
+
+        function salvarEstoque() {
+            const estoqueId = `${estoqueNome}_${estoqueNumero}`.replace(/\s+/g, '_');
+            database.ref(`Estoques/${estoqueId}`).set({
+                nome: estoqueNome,
+                numero: estoqueNumero,
+                modelo: estoqueModelo,
+                responsavel: estoqueResponsavel,
+                link: estoqueLink,
+                itens: itens
+            }).then(() => alert("Estoque salvo!")).catch(err => alert("Erro: " + err));
+        }
+
+        function carregarEstoque() {
+            const estoqueId = `${estoqueNome}_${estoqueNumero}`.replace(/\s+/g, '_');
+            database.ref(`Estoques/${estoqueId}`).once("value").then(snapshot => {
+                const data = snapshot.val();
+                itens = data?.itens || [...itensPadraoSELAVES];
+                renderizarTabela();
+            }).catch(err => alert("Erro ao carregar: " + err));
+        }
+
+        carregarEstoque();
+    </script>
+</body>
+</html>
